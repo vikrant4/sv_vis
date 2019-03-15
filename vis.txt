@@ -1,0 +1,3 @@
+Our Energy System - The National Academics	http://needtoknow.nas.edu/energy/interactive/our-energy-system/
+Visualizing flows on a leaflet map		http://bl.ocks.org/yellowcap/03cd4a6c72f661377f7e
+Energy flow diagrams				https://ec.europa.eu/eurostat/cache/sankey/sankey.html?geos=EU28&year=2015&unit=KTOE&fuels=0000&highlight=&nodeDisagg=0101000000&flowDisagg=false&translateX=0&translateY=0&scale=1&language=EN
