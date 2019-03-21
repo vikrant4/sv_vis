@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<html>
+
+<head>
+    <title>Waste flow in Victoria</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.4.0/dist/leaflet.css" integrity="sha512-puBpdR0798OZvTTbP4A8Ix/l+A4dHDD0DGqYW6RQ+9jxkRFclaxxQb/SJAWZfWAkuyeQUytO7+7N4QKrDh+drA==" crossorigin="" />
+    <script src="https://d3js.org/d3-selection.v1.min.js"></script>
+    <script src="https://d3js.org/d3-dsv.v1.min.js"></script>
+    <script src="https://d3js.org/d3-fetch.v1.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js" integrity="sha512-QVftwZFqvtRNi0ZyCtsznlKSWOStnDORoefr1enyq5mVL4tmKB3S/EnC3rRJcxCPavG10IcrVGSmPh6Qw5lwrg==" crossorigin=""></script>
+</head>
+
+<body>
+    <style>
+        #map {
+            min-height: 750px;
+        }
+
+        .transfer-node {
+            fill: red;
+            opacity: 0.6;
+        }
+        .disposal-node {
+            fill: green;
+            opacity: 0.6;
+        }
+    </style>
+    <div id="map"></div>
+    <script type="text/javascript">
+    (function() {
+        // Setting Leaflet map
+        var map = L.map('map').setView([-38.30366863, 145.55121652], 9);
+        L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}', {
+            attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
+            maxZoom: 18,
+            id: 'mapbox.streets',
+            accessToken: 'pk.eyJ1IjoidmlrcmFudDQiLCJhIjoiY2p0YzRocm44MHNxdzN6b2E1dm9wMjF2cCJ9.VrFaPJ36LG0Vzjlw1zSPTg'
+        }).addTo(map);
+        L.svg().addTo(map);
+
+        var svg = d3.select(map.getPanes().overlayPane).append("svg");
+        var g = d3.select('#map').select("svg").select("g").attr('class', 'leaflet-zoom-hide');
+        g.append('g').attr('class', 'tn-group');
+        g.append('g').attr('class', 'dn-group');
+        var transfer_nodes;
+        var disposal_nodes;
+
+        // Function to update node location on map reset
+        update = () => {
+            console.log(transfer_nodes);
+            transfer_nodes.attr('transform', (d) => {
+                return "translate(" +
+                    map.latLngToLayerPoint(d.LatLng).x + "," +
+                    map.latLngToLayerPoint(d.LatLng).y + ")";
+            });
+            disposal_nodes.attr('transform', (d) => {
+                return "translate(" +
+                    map.latLngToLayerPoint(d.LatLng).x + "," +
+                    map.latLngToLayerPoint(d.LatLng).y + ")";
+            })
+        }
+
+        // Fetching data
+        d3.csv("transfer_data.csv").then(transfer_stations => {
+            transfer_stations.forEach(transfer_station => {
+                transfer_station.LatLng = new L.LatLng(parseFloat(transfer_station.Latitude), parseFloat(transfer_station.Longitude))
+            });
+
+            transfer_nodes = g.select('.tn-group').selectAll('circle')
+                .data(transfer_stations)
+                .enter().append('circle')
+                .attr('r', '10')
+                .attr('class', 'transfer-node')
+                .on('mouseover', (d) => {
+                    d3.select(this).transition().duration(300).attr('r', '15');
+                })
+
+            return d3.csv("disposal_data.csv");
+        }).then(disposal_stations => {
+            disposal_stations.forEach(disposal_station => {
+                disposal_station.LatLng = new L.LatLng(parseFloat(disposal_station['DF Latitude']), parseFloat(disposal_station['DF Longitude']))
+            });
+
+            disposal_nodes = g.select('.dn-group').selectAll('circle')
+                .data(disposal_stations)
+                .enter().append('circle')
+                .attr('r', '10')
+                .attr('class', 'disposal-node');
+
+            return Promise.resolve()
+
+        }).then(update);
+
+        map.on('viewreset', update);
+    })();
+    </script>
+</body>
+
+</html>
