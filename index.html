@@ -16,14 +16,20 @@
         #map {
             min-height: 750px;
         }
-
-        .transfer-node {
-            fill: red;
-            opacity: 0.6;
+        .node {
+            opacity: 0.7;
+            cursor: default;
+            transform-origin: 6px 6px;
         }
-        .disposal-node {
-            fill: green;
-            opacity: 0.6;
+        /* disable text selection */
+        svg *::selection {
+            background : transparent;
+        }
+        svg *::-moz-selection {
+            background:transparent;
+        }
+        svg *::-webkit-selection {
+            background:transparent;
         }
     </style>
     <div id="map"></div>
@@ -39,60 +45,165 @@
         }).addTo(map);
         L.svg().addTo(map);
 
-        var svg = d3.select(map.getPanes().overlayPane).append("svg");
-        var g = d3.select('#map').select("svg").select("g").attr('class', 'leaflet-zoom-hide');
+        var out_transactions = [];
+        var in_transactions = [];
+        var in_focus = null;
+        const NODE_TYPE = {
+            transfer_station: "transfer_station",
+            disposal_station: "disposal_station"
+        };
+        const TRANSFORM_SPLIT = /\w*\(.[^\)]*\)/g;
+
+        var svg = d3.select("#map").select("svg");
+        var g = svg.select("g");
         g.append('g').attr('class', 'tn-group');
         g.append('g').attr('class', 'dn-group');
-        var transfer_nodes;
-        var disposal_nodes;
+        g.append('g').attr('class', 'path-group');
+
+        document.getElementById("map").addEventListener("click", function(e) {
+            if(e.target == this) {
+                shrinknode.call(in_focus);
+            }
+        })
 
         // Function to update node location on map reset
         update = () => {
-            console.log(transfer_nodes);
-            transfer_nodes.attr('transform', (d) => {
+            g.selectAll(".node").attr('transform', (d) => {
                 return "translate(" +
                     map.latLngToLayerPoint(d.LatLng).x + "," +
                     map.latLngToLayerPoint(d.LatLng).y + ")";
             });
-            disposal_nodes.attr('transform', (d) => {
-                return "translate(" +
-                    map.latLngToLayerPoint(d.LatLng).x + "," +
-                    map.latLngToLayerPoint(d.LatLng).y + ")";
-            })
+        }
+
+        handlenodeclick = function(d) {
+            if (!in_focus) {
+                in_focus = this;
+                expandnode.call(this, d);
+            } else if (in_focus == this) {
+                in_focus = null;
+                shrinknode.call(this);
+            } else {
+                shrinknode.call(in_focus);
+                in_focus = this;
+                expandnode.call(this, d);
+            }
+        }
+
+        handlenodemouseover = function(d) {
+            if(in_focus != this) {
+                expandnode.call(this, d);
+            }
+        }
+
+        handlenodemouseout = function() {
+            if(in_focus != this) {
+                shrinknode.call(this);
+            }
+        }
+
+        expandnode = function(d) {
+            transform = d3.select(this).attr('transform');
+            transform_split = transform.match(TRANSFORM_SPLIT);
+            new_transform = "";
+            transform_split.forEach((t, i, a) => {
+                if(!t.match("scale")) {
+                    new_transform += t;
+                }
+                if(i+1 == a.length) {
+                    new_transform += "scale(2)";
+                }
+            });
+            d3.select(this).attr('transform', new_transform);
+
+        }
+
+        shrinknode = function() {
+            transform = d3.select(this).attr('transform');
+            transform_split = transform.match(TRANSFORM_SPLIT);
+            new_transform = "";
+            transform_split.forEach(t => {
+                if(!t.match("scale")) {
+                    new_transform += t;
+                }
+            });
+            d3.select(this).attr('transform', new_transform);
         }
 
         // Fetching data
         d3.csv("transfer_data.csv").then(transfer_stations => {
             transfer_stations.forEach(transfer_station => {
                 transfer_station.LatLng = new L.LatLng(parseFloat(transfer_station.Latitude), parseFloat(transfer_station.Longitude))
+                transfer_station.type = NODE_TYPE.transfer_station;
+                transfer_station.name = transfer_station["Facility Name"];
             });
 
-            transfer_nodes = g.select('.tn-group').selectAll('circle')
+            tn_nodes = g.select('.tn-group').selectAll('.node')
                 .data(transfer_stations)
-                .enter().append('circle')
-                .attr('r', '10')
-                .attr('class', 'transfer-node')
-                .on('mouseover', (d) => {
-                    d3.select(this).transition().duration(300).attr('r', '15');
+                .enter().append('g').attr('class', 'node transfer-node')
+                .attr('pointer-events', 'all')
+                .on('mouseover', handlenodemouseover)
+                .on('mouseout', handlenodemouseout)
+                .on('click', handlenodeclick);
+            tn_nodes.append('circle')
+                .attr('r', 6)
+                .attr('cx', 6)
+                .attr('cy', 6)
+                .attr('fill', 'orange');
+            tn_nodes.append('text')
+                .text(function() {
+                    return "T";
                 })
+                .attr('x', 6)
+                .attr('y', 6)
+                .attr('dy', 4)
+                .attr('fill', 'white')
+                .attr('text-anchor', 'middle');
 
             return d3.csv("disposal_data.csv");
         }).then(disposal_stations => {
             disposal_stations.forEach(disposal_station => {
-                disposal_station.LatLng = new L.LatLng(parseFloat(disposal_station['DF Latitude']), parseFloat(disposal_station['DF Longitude']))
+                disposal_station.LatLng = new L.LatLng(parseFloat(disposal_station.Latitude), parseFloat(disposal_station.Longitude));
+                disposal_station.type = NODE_TYPE.disposal_station;
+                disposal_station.name = disposal_station["Disposal Facility"];
             });
 
-            disposal_nodes = g.select('.dn-group').selectAll('circle')
+            df_nodes = g.select('.dn-group').selectAll('.node')
                 .data(disposal_stations)
-                .enter().append('circle')
-                .attr('r', '10')
-                .attr('class', 'disposal-node');
+                .enter().append('g').attr('class', 'node disposal-node')
+                .attr('pointer-events', 'all')
+                .on('mouseover', handlenodemouseover)
+                .on('mouseout', handlenodemouseout)
+                .on('click', handlenodeclick);
+            df_nodes.append('circle')
+                .attr('r', 6)
+                .attr('cx', 6)
+                .attr('cy', 6)
+                .attr('fill', 'green');
+            df_nodes.append('text')
+                .text(function() {
+                    return "L";
+                })
+                .attr('x', 6)
+                .attr('y', 6)
+                .attr('dy', 4)
+                .attr('fill', 'white')
+                .attr('text-anchor', 'middle');
 
-            return Promise.resolve()
+            return d3.csv("transaction_data.csv");
+        }).then(transactions => {
+            transactions.forEach(tr => {
+                if (tr['INNOUTUT'] == "IN") {
+                    in_transactions.push(tr);
+                } else if (tr["INNOUTUT"] == "OUT") {
+                    out_transactions.push(tr);
+                }
+            });
+            update();
+        });
 
-        }).then(update);
 
-        map.on('viewreset', update);
+        map.on('viewreset ', update);
+        map.on('zoom ', update);
     })();
     </script>
 </body>
