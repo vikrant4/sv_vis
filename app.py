@@ -9,7 +9,7 @@ app = Flask(__name__)
 def index():
     return send_from_directory(
         os.path.dirname(__file__),
-        "index.html"
+        "app_index.html"
     )
 
 

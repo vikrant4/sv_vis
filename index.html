@@ -175,7 +175,7 @@
         }
 
         // Fetching data
-        d3.csv("api/transfer_data").then(transfer_stations => {
+        d3.csv("transfer_data.csv").then(transfer_stations => {
             transfer_stations.forEach(transfer_station => {
                 transfer_station.LatLng = new L.LatLng(parseFloat(transfer_station.Latitude), parseFloat(transfer_station.Longitude))
                 transfer_station.type = NODE_TYPE.transfer_station;
@@ -207,7 +207,7 @@
                 .attr('fill', 'white')
                 .attr('text-anchor', 'middle');
 
-            return d3.csv("api/disposal_data");
+            return d3.csv("disposal_data.csv");
         }).then(disposal_stations => {
             disposal_stations.forEach(disposal_station => {
                 disposal_station.LatLng = new L.LatLng(parseFloat(disposal_station.Latitude), parseFloat(disposal_station.Longitude));
@@ -240,7 +240,7 @@
                 .attr('fill', 'white')
                 .attr('text-anchor', 'middle');
 
-            return d3.csv("api/transaction_data");
+            return d3.csv("transaction_data.csv");
         }).then(transactions => {
             transactions.forEach(tr => {
                 if (tr['INNOUTUT'] == "IN") {
