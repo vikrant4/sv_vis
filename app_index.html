@@ -124,7 +124,7 @@
             })
             .attr('stroke', 'rgb(52,152,219)')
             .attr('stroke-width', function(tr) {
-                return tr.data['Volume m3']/10;
+                return tr.data['tot tonnes']*10/67.5 + 2;
             });
         }
 
