@@ -17,9 +17,11 @@
             min-height: 750px;
         }
         .node {
-            opacity: 0.7;
             cursor: default;
             transform-origin: 6px 6px;
+        }
+        svg path {
+            opacity: 0.4;
         }
         /* disable text selection */
         svg *::selection {
@@ -52,13 +54,18 @@
             transfer_station: "transfer_station",
             disposal_station: "disposal_station"
         };
+        const NODE_SIZE = 6;
         const TRANSFORM_SPLIT = /\w*\(.[^\)]*\)/g;
+
+        getClassName = (name) => {
+            return name.toLowerCase().replace(/ /g, '-');
+        }
 
         var svg = d3.select("#map").select("svg");
         var g = svg.select("g");
+        g.append('g').attr('class', 'path-group');
         g.append('g').attr('class', 'tn-group');
         g.append('g').attr('class', 'dn-group');
-        g.append('g').attr('class', 'path-group');
 
         document.getElementById("map").addEventListener("click", function(e) {
             if(e.target == this) {
@@ -70,8 +77,11 @@
         update = () => {
             g.selectAll(".node").attr('transform', (d) => {
                 return "translate(" +
-                    map.latLngToLayerPoint(d.LatLng).x + "," +
-                    map.latLngToLayerPoint(d.LatLng).y + ")";
+                    (map.latLngToLayerPoint(d.LatLng).x-NODE_SIZE) + "," +
+                    (map.latLngToLayerPoint(d.LatLng).y-NODE_SIZE) + ")";
+            });
+            g.selectAll('path').attr('d', function(tr){
+                return `M ${map.latLngToLayerPoint(tr['0'].LatLng).x}, ${map.latLngToLayerPoint(tr['0'].LatLng).y} L ${map.latLngToLayerPoint(tr['1'].LatLng).x}, ${map.latLngToLayerPoint(tr['1'].LatLng).y}`;
             });
         }
 
@@ -101,6 +111,28 @@
             }
         }
 
+        makePaths = function(links) {
+            paths = g.select('.path-group').selectAll('path')
+            .data(links);
+            paths.exit().remove();
+            paths.enter().append('path')
+            .attr('d', function(tr){
+                return `M ${map.latLngToLayerPoint(tr['0'].LatLng).x}, ${map.latLngToLayerPoint(tr['0'].LatLng).y} L ${map.latLngToLayerPoint(tr['1'].LatLng).x}, ${map.latLngToLayerPoint(tr['1'].LatLng).y}`;
+            })
+            .attr('class', (tr) => {
+                return `${getClassName(tr['0'].name)} ${getClassName(tr['1'].name)}`;
+            })
+            .attr('stroke', 'rgb(52,152,219)')
+            .attr('stroke-width', function(tr) {
+                return tr.data['Volume m3']/10;
+            });
+        }
+
+        removePaths = function() {
+            name = getClassName(d3.select(this).data()[0].name);
+            g.select('.path-group').selectAll('path.'+name).remove();
+        }
+
         expandnode = function(d) {
             transform = d3.select(this).attr('transform');
             transform_split = transform ? transform.match(TRANSFORM_SPLIT) : [];
@@ -114,7 +146,19 @@
                 }
             });
             d3.select(this).attr('transform', new_transform);
-
+            p1 = d.type == NODE_TYPE.transfer_station ? 'Facility NAME' : 'Disposal Facility';
+            p2 = d.type == NODE_TYPE.transfer_station ? 'Disposal Facility' : 'Facility NAME';
+            links = [];
+            out_transactions.forEach(tr => {
+                if(tr[p1] == d.name) {
+                    links.push({
+                        '0': d,
+                        '1': g.select('#'+getClassName(tr[p2])).data()[0],
+                        'data': tr
+                    });
+                }
+            });
+            makePaths.call(this, links);
         }
 
         shrinknode = function() {
@@ -127,6 +171,7 @@
                 }
             });
             d3.select(this).attr('transform', new_transform);
+            removePaths.call(this);
         }
 
         // Fetching data
@@ -140,22 +185,25 @@
             tn_nodes = g.select('.tn-group').selectAll('.node')
                 .data(transfer_stations)
                 .enter().append('g').attr('class', 'node transfer-node')
+                .attr('id', function(d){
+                    return d.name.toLowerCase().replace(/ /g, '-');
+                })
                 .attr('pointer-events', 'all')
                 .on('mouseover', handlenodemouseover)
                 .on('mouseout', handlenodemouseout)
                 .on('click', handlenodeclick);
             tn_nodes.append('circle')
-                .attr('r', 6)
-                .attr('cx', 6)
-                .attr('cy', 6)
+                .attr('r', NODE_SIZE)
+                .attr('cx', NODE_SIZE)
+                .attr('cy', NODE_SIZE)
                 .attr('fill', 'orange');
             tn_nodes.append('text')
                 .text(function() {
                     return "T";
                 })
-                .attr('x', 6)
-                .attr('y', 6)
-                .attr('dy', 4)
+                .attr('x', NODE_SIZE)
+                .attr('y', NODE_SIZE)
+                .attr('dy', NODE_SIZE-2)
                 .attr('fill', 'white')
                 .attr('text-anchor', 'middle');
 
@@ -170,22 +218,25 @@
             df_nodes = g.select('.dn-group').selectAll('.node')
                 .data(disposal_stations)
                 .enter().append('g').attr('class', 'node disposal-node')
+                .attr('id', function(d){
+                    return d.name.toLowerCase().replace(/ /g, '-');
+                })
                 .attr('pointer-events', 'all')
                 .on('mouseover', handlenodemouseover)
                 .on('mouseout', handlenodemouseout)
                 .on('click', handlenodeclick);
             df_nodes.append('circle')
-                .attr('r', 6)
-                .attr('cx', 6)
-                .attr('cy', 6)
+                .attr('r', NODE_SIZE)
+                .attr('cx', NODE_SIZE)
+                .attr('cy', NODE_SIZE)
                 .attr('fill', 'green');
             df_nodes.append('text')
                 .text(function() {
                     return "L";
                 })
-                .attr('x', 6)
-                .attr('y', 6)
-                .attr('dy', 4)
+                .attr('x', NODE_SIZE)
+                .attr('y', NODE_SIZE)
+                .attr('dy', NODE_SIZE-2)
                 .attr('fill', 'white')
                 .attr('text-anchor', 'middle');
 

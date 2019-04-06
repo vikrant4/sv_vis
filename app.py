@@ -7,17 +7,26 @@ app = Flask(__name__)
 
 @app.route("/")
 def index():
-    return send_from_directory(os.path.dirname(__file__), "index.html")
+    return send_from_directory(
+        os.path.dirname(__file__),
+        "index.html"
+    )
 
 
 @app.route("/api/disposal_data")
 def disposal_data():
-    return send_from_directory(os.path.dirname(__file__), "disposal_data.csv")
+    return send_from_directory(
+        os.path.dirname(__file__),
+        "disposal_data.csv"
+    )
 
 
 @app.route("/api/transfer_data")
 def transfer_data():
-    return send_from_directory(os.path.dirname(__file__), "transfer_data.csv")
+    return send_from_directory(
+        os.path.dirname(__file__),
+        "transfer_data.csv"
+    )
 
 
 @app.route("/api/transaction_data")
