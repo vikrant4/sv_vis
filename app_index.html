@@ -3,25 +3,35 @@
 <html>
 
 <head>
-    <title>Waste flow in Victoria</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.4.0/dist/leaflet.css" integrity="sha512-puBpdR0798OZvTTbP4A8Ix/l+A4dHDD0DGqYW6RQ+9jxkRFclaxxQb/SJAWZfWAkuyeQUytO7+7N4QKrDh+drA==" crossorigin="" />
-    <script src="https://d3js.org/d3-selection.v1.min.js"></script>
-    <script src="https://d3js.org/d3-dsv.v1.min.js"></script>
-    <script src="https://d3js.org/d3-fetch.v1.min.js"></script>
-    <script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js" integrity="sha512-QVftwZFqvtRNi0ZyCtsznlKSWOStnDORoefr1enyq5mVL4tmKB3S/EnC3rRJcxCPavG10IcrVGSmPh6Qw5lwrg==" crossorigin=""></script>
+  <title>Waste flow in Victoria</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.4.0/dist/leaflet.css" integrity="sha512-puBpdR0798OZvTTbP4A8Ix/l+A4dHDD0DGqYW6RQ+9jxkRFclaxxQb/SJAWZfWAkuyeQUytO7+7N4QKrDh+drA==" crossorigin="" />
+  <link href="https://unpkg.com/material-components-web@latest/dist/material-components-web.min.css" rel="stylesheet">
+  <script src="https://d3js.org/d3-selection.v1.min.js"></script>
+  <script src="https://d3js.org/d3-dsv.v1.min.js"></script>
+  <script src="https://d3js.org/d3-fetch.v1.min.js"></script>
+  <script src="https://unpkg.com/material-components-web@latest/dist/material-components-web.min.js"></script>
+  <script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js" integrity="sha512-QVftwZFqvtRNi0ZyCtsznlKSWOStnDORoefr1enyq5mVL4tmKB3S/EnC3rRJcxCPavG10IcrVGSmPh6Qw5lwrg==" crossorigin=""></script>
 </head>
 
 <body>
-    <style>
-        #map {
+  <style>
+    #map {
             min-height: 750px;
         }
         .node {
             cursor: default;
             transform-origin: 6px 6px;
+            -webkit-transition: all 0.2s;
+            -moz-transition: all 0.2s;
+            -o-transition: all 0.2s;
+            transition: all 0.2s;
         }
-        svg path {
+        .leaflet-pane > svg path {
+            pointer-events: auto;
+        }
+        svg .path-group path {
             opacity: 0.4;
+            cursor: default;
         }
         /* disable text selection */
         svg *::selection {
@@ -34,229 +44,282 @@
             background:transparent;
         }
     </style>
-    <div id="map"></div>
-    <script type="text/javascript">
-    (function() {
-        // Setting Leaflet map
-        var map = L.map('map').setView([-38.30366863, 145.55121652], 9);
-        L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}', {
-            attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
-            maxZoom: 18,
-            id: 'mapbox.streets',
-            accessToken: 'pk.eyJ1IjoidmlrcmFudDQiLCJhIjoiY2p0YzRocm44MHNxdzN6b2E1dm9wMjF2cCJ9.VrFaPJ36LG0Vzjlw1zSPTg'
-        }).addTo(map);
-        L.svg().addTo(map);
+  <div id="map"></div>
+  <script type="text/javascript">
+  (function() {
+    // Setting Leaflet map
+    var map = L.map('map').setView([-38.30366863, 145.55121652], 9);
+    L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}', {
+      attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
+      maxZoom: 18,
+      id: 'mapbox.streets',
+      accessToken: 'pk.eyJ1IjoidmlrcmFudDQiLCJhIjoiY2p0YzRocm44MHNxdzN6b2E1dm9wMjF2cCJ9.VrFaPJ36LG0Vzjlw1zSPTg'
+    }).addTo(map);
+    L.svg().addTo(map);
 
-        var out_transactions = [];
-        var in_transactions = [];
-        var in_focus = null;
-        const NODE_TYPE = {
-            transfer_station: "transfer_station",
-            disposal_station: "disposal_station"
-        };
-        const NODE_SIZE = 6;
-        const TRANSFORM_SPLIT = /\w*\(.[^\)]*\)/g;
+    var out_transactions = [];
+    var in_transactions = [];
+    var in_focus = null;
+    const NODE_TYPE = {
+      transfer_station: "transfer_station",
+      disposal_station: "disposal_station"
+    };
+    const NODE_SIZE = 6;
+    const TRANSFORM_SPLIT = /\w*\(.[^\)]*\)/g;
 
-        getClassName = (name) => {
-            return name.toLowerCase().replace(/ /g, '-');
-        }
+    getClassName = (name) => {
+      return name.toLowerCase().replace(/ /g, '-');
+    }
 
-        var svg = d3.select("#map").select("svg");
-        var g = svg.select("g");
-        g.append('g').attr('class', 'path-group');
-        g.append('g').attr('class', 'tn-group');
-        g.append('g').attr('class', 'dn-group');
+    var svg = d3.select("#map").select("svg");
+    var g = svg.select("g").attr('pointer-events', 'all');
+    g.append('g').attr('class', 'path-group');
+    g.append('g').attr('class', 'tn-group');
+    g.append('g').attr('class', 'dn-group');
+    tooltip = g.append('g').attr('class', 'tooltip')
+      .attr('opacity', 0);
 
-        document.getElementById("map").addEventListener("click", function(e) {
-            if(e.target == this) {
-                shrinknode.call(in_focus);
-            }
+    document.getElementById("map").addEventListener("click", function(e) {
+      if (e.target == this && in_focus) {
+        shrinknode.call(in_focus);
+        in_focus = null;
+      }
+    });
+
+    // Function to update node location on map reset
+    update = () => {
+      g.selectAll(".node").attr('transform', (d) => {
+        return "translate(" +
+          (map.latLngToLayerPoint(d.LatLng).x - NODE_SIZE) + "," +
+          (map.latLngToLayerPoint(d.LatLng).y - NODE_SIZE) + ")";
+      });
+      g.selectAll('path').attr('d', function(tr) {
+        return `M ${map.latLngToLayerPoint(tr['0'].LatLng).x}, ${map.latLngToLayerPoint(tr['0'].LatLng).y} L ${map.latLngToLayerPoint(tr['1'].LatLng).x}, ${map.latLngToLayerPoint(tr['1'].LatLng).y}`;
+      });
+    }
+
+    handlenodeclick = function(d) {
+      if (!in_focus) {
+        in_focus = this;
+        expandnode.call(this, d);
+      } else if (in_focus == this) {
+        in_focus = null;
+        shrinknode.call(this);
+      } else {
+        shrinknode.call(in_focus);
+        in_focus = this;
+        expandnode.call(this, d);
+      }
+    }
+
+    handlenodemouseover = function(d) {
+      if (in_focus != this) {
+        expandnode.call(this, d);
+      }
+    }
+
+    handlenodemouseout = function() {
+      if (in_focus != this) {
+        shrinknode.call(this);
+      }
+    }
+
+    makePaths = function(links) {
+      paths = g.select('.path-group').selectAll('path')
+        .data(links);
+      paths.exit().remove();
+      paths.enter().append('path')
+        .attr('d', function(tr) {
+          return `M ${map.latLngToLayerPoint(tr['0'].LatLng).x}, ${map.latLngToLayerPoint(tr['0'].LatLng).y} L ${map.latLngToLayerPoint(tr['1'].LatLng).x}, ${map.latLngToLayerPoint(tr['1'].LatLng).y}`;
         })
-
-        // Function to update node location on map reset
-        update = () => {
-            g.selectAll(".node").attr('transform', (d) => {
-                return "translate(" +
-                    (map.latLngToLayerPoint(d.LatLng).x-NODE_SIZE) + "," +
-                    (map.latLngToLayerPoint(d.LatLng).y-NODE_SIZE) + ")";
-            });
-            g.selectAll('path').attr('d', function(tr){
-                return `M ${map.latLngToLayerPoint(tr['0'].LatLng).x}, ${map.latLngToLayerPoint(tr['0'].LatLng).y} L ${map.latLngToLayerPoint(tr['1'].LatLng).x}, ${map.latLngToLayerPoint(tr['1'].LatLng).y}`;
-            });
-        }
-
-        handlenodeclick = function(d) {
-            if (!in_focus) {
-                in_focus = this;
-                expandnode.call(this, d);
-            } else if (in_focus == this) {
-                in_focus = null;
-                shrinknode.call(this);
-            } else {
-                shrinknode.call(in_focus);
-                in_focus = this;
-                expandnode.call(this, d);
-            }
-        }
-
-        handlenodemouseover = function(d) {
-            if(in_focus != this) {
-                expandnode.call(this, d);
-            }
-        }
-
-        handlenodemouseout = function() {
-            if(in_focus != this) {
-                shrinknode.call(this);
-            }
-        }
-
-        makePaths = function(links) {
-            paths = g.select('.path-group').selectAll('path')
-            .data(links);
-            paths.exit().remove();
-            paths.enter().append('path')
-            .attr('d', function(tr){
-                return `M ${map.latLngToLayerPoint(tr['0'].LatLng).x}, ${map.latLngToLayerPoint(tr['0'].LatLng).y} L ${map.latLngToLayerPoint(tr['1'].LatLng).x}, ${map.latLngToLayerPoint(tr['1'].LatLng).y}`;
+        .attr('class', (tr) => {
+          return `${getClassName(tr['0'].name)} ${getClassName(tr['1'].name)}`;
+        })
+        .attr('stroke', 'rgb(52,152,219)')
+        .attr('stroke-width', function(tr) {
+          return tr.data['tot tonnes'] * 10 / 67.5 + 2;
+        })
+        .attr('pointer-events', 'all')
+        .on('mouseover', function(tr) {
+            mouse_location = map.mouseEventToLayerPoint(d3.event);
+            tooltip.attr('transform', function(){
+                return `translate(${mouse_location.x}, ${mouse_location.y-30})`;
+            }).
+            attr('opacity', 1);
+            tooltip.append('text').text(function() {
+                return `${tr.data['Facility NAME']} to ${tr.data['Disposal Facility']}`;
             })
-            .attr('class', (tr) => {
-                return `${getClassName(tr['0'].name)} ${getClassName(tr['1'].name)}`;
+            .attr('text-anchor', 'middle');
+            tooltip.append('text').text(function() {
+                return `Volume: ${tr.data['Volume m3']}`;
             })
-            .attr('stroke', 'rgb(52,152,219)')
-            .attr('stroke-width', function(tr) {
-                return tr.data['tot tonnes']*10/67.5 + 2;
-            });
-        }
-
-        removePaths = function() {
-            name = getClassName(d3.select(this).data()[0].name);
-            g.select('.path-group').selectAll('path.'+name).remove();
-        }
-
-        expandnode = function(d) {
-            transform = d3.select(this).attr('transform');
-            transform_split = transform ? transform.match(TRANSFORM_SPLIT) : [];
-            new_transform = "";
-            transform_split.forEach((t, i, a) => {
-                if(!t.match("scale")) {
-                    new_transform += t;
-                }
-                if(i+1 == a.length) {
-                    new_transform += "scale(2)";
-                }
-            });
-            d3.select(this).attr('transform', new_transform);
-            p1 = d.type == NODE_TYPE.transfer_station ? 'Facility NAME' : 'Disposal Facility';
-            p2 = d.type == NODE_TYPE.transfer_station ? 'Disposal Facility' : 'Facility NAME';
-            links = [];
-            out_transactions.forEach(tr => {
-                if(tr[p1] == d.name) {
-                    links.push({
-                        '0': d,
-                        '1': g.select('#'+getClassName(tr[p2])).data()[0],
-                        'data': tr
-                    });
-                }
-            });
-            makePaths.call(this, links);
-        }
-
-        shrinknode = function() {
-            transform = d3.select(this).attr('transform');
-            transform_split = transform ? transform.match(TRANSFORM_SPLIT): [];
-            new_transform = "";
-            transform_split.forEach(t => {
-                if(!t.match("scale")) {
-                    new_transform += t;
-                }
-            });
-            d3.select(this).attr('transform', new_transform);
-            removePaths.call(this);
-        }
-
-        // Fetching data
-        d3.csv("api/transfer_data").then(transfer_stations => {
-            transfer_stations.forEach(transfer_station => {
-                transfer_station.LatLng = new L.LatLng(parseFloat(transfer_station.Latitude), parseFloat(transfer_station.Longitude))
-                transfer_station.type = NODE_TYPE.transfer_station;
-                transfer_station.name = transfer_station["Facility Name"];
-            });
-
-            tn_nodes = g.select('.tn-group').selectAll('.node')
-                .data(transfer_stations)
-                .enter().append('g').attr('class', 'node transfer-node')
-                .attr('id', function(d){
-                    return d.name.toLowerCase().replace(/ /g, '-');
-                })
-                .attr('pointer-events', 'all')
-                .on('mouseover', handlenodemouseover)
-                .on('mouseout', handlenodemouseout)
-                .on('click', handlenodeclick);
-            tn_nodes.append('circle')
-                .attr('r', NODE_SIZE)
-                .attr('cx', NODE_SIZE)
-                .attr('cy', NODE_SIZE)
-                .attr('fill', 'orange');
-            tn_nodes.append('text')
-                .text(function() {
-                    return "T";
-                })
-                .attr('x', NODE_SIZE)
-                .attr('y', NODE_SIZE)
-                .attr('dy', NODE_SIZE-2)
-                .attr('fill', 'white')
-                .attr('text-anchor', 'middle');
-
-            return d3.csv("api/disposal_data");
-        }).then(disposal_stations => {
-            disposal_stations.forEach(disposal_station => {
-                disposal_station.LatLng = new L.LatLng(parseFloat(disposal_station.Latitude), parseFloat(disposal_station.Longitude));
-                disposal_station.type = NODE_TYPE.disposal_station;
-                disposal_station.name = disposal_station["Disposal Facility"];
-            });
-
-            df_nodes = g.select('.dn-group').selectAll('.node')
-                .data(disposal_stations)
-                .enter().append('g').attr('class', 'node disposal-node')
-                .attr('id', function(d){
-                    return d.name.toLowerCase().replace(/ /g, '-');
-                })
-                .attr('pointer-events', 'all')
-                .on('mouseover', handlenodemouseover)
-                .on('mouseout', handlenodemouseout)
-                .on('click', handlenodeclick);
-            df_nodes.append('circle')
-                .attr('r', NODE_SIZE)
-                .attr('cx', NODE_SIZE)
-                .attr('cy', NODE_SIZE)
-                .attr('fill', 'green');
-            df_nodes.append('text')
-                .text(function() {
-                    return "L";
-                })
-                .attr('x', NODE_SIZE)
-                .attr('y', NODE_SIZE)
-                .attr('dy', NODE_SIZE-2)
-                .attr('fill', 'white')
-                .attr('text-anchor', 'middle');
-
-            return d3.csv("api/transaction_data");
-        }).then(transactions => {
-            transactions.forEach(tr => {
-                if (tr['INNOUTUT'] == "IN") {
-                    in_transactions.push(tr);
-                } else if (tr["INNOUTUT"] == "OUT") {
-                    out_transactions.push(tr);
-                }
-            });
-            update();
+            .attr('dy', 10)
+            .attr('text-anchor', 'middle');
+            tooltip.append('text').text(function() {
+                return `Weight: ${tr.data['tot tonnes']} t`;
+            })
+            .attr('dy', 20)
+            .attr('text-anchor', 'middle');
+        })
+        .on('mouseout', function() {
+            tooltip
+            .attr('opacity', 0)
+            .html("");
         });
+    }
+
+    removePaths = function() {
+      name = getClassName(d3.select(this).data()[0].name);
+      g.select('.path-group').selectAll('path.' + name).remove();
+    }
+
+    expandnode = function(d) {
+      // Scaling the node
+      transform = d3.select(this).attr('transform');
+      transform_split = transform ? transform.match(TRANSFORM_SPLIT) : [];
+      new_transform = "";
+      transform_split.forEach((t, i, a) => {
+        if (!t.match("scale")) {
+          new_transform += t;
+        }
+        if (i + 1 == a.length) {
+          new_transform += "scale(2)";
+        }
+      });
+      d3.select(this).attr('transform', new_transform);
+
+      // Showing name
+      d3.select(this).select('.name').attr('display', 'initial');
+
+      // Making and showing paths
+      p1 = d.type == NODE_TYPE.transfer_station ? 'Facility NAME' : 'Disposal Facility';
+      p2 = d.type == NODE_TYPE.transfer_station ? 'Disposal Facility' : 'Facility NAME';
+      links = [];
+      out_transactions.forEach(tr => {
+        if (tr[p1] == d.name) {
+          links.push({
+            '0': d,
+            '1': g.select('#' + getClassName(tr[p2])).data()[0],
+            'data': tr
+          });
+        }
+      });
+      makePaths.call(this, links);
+    }
+
+    shrinknode = function() {
+      transform = d3.select(this).attr('transform');
+      transform_split = transform ? transform.match(TRANSFORM_SPLIT) : [];
+      new_transform = "";
+      transform_split.forEach(t => {
+        if (!t.match("scale")) {
+          new_transform += t;
+        }
+      });
+      d3.select(this).attr('transform', new_transform);
+      d3.select(this).select('.name').attr('display', 'none');
+      removePaths.call(this);
+    }
+
+    // Fetching data
+    d3.csv("api/transfer_data").then(transfer_stations => {
+      transfer_stations.forEach(transfer_station => {
+        transfer_station.LatLng = new L.LatLng(parseFloat(transfer_station.Latitude), parseFloat(transfer_station.Longitude))
+        transfer_station.type = NODE_TYPE.transfer_station;
+        transfer_station.name = transfer_station["Facility Name"];
+      });
+
+      tn_nodes = g.select('.tn-group').selectAll('.node')
+        .data(transfer_stations)
+        .enter().append('g').attr('class', 'node transfer-node')
+        .attr('id', function(d) {
+          return d.name.toLowerCase().replace(/ /g, '-');
+        })
+        .on('mouseover', handlenodemouseover)
+        .on('mouseout', handlenodemouseout)
+        .on('click', handlenodeclick);
+      tn_nodes.append('text')
+        .text(function(d) {
+          return d.name;
+        })
+        .attr('class', 'name')
+        .attr('x', NODE_SIZE)
+        .attr('y', 0)
+        .attr('text-anchor', 'middle')
+        .attr('display', 'none');
+      tn_nodes.append('circle')
+        .attr('r', NODE_SIZE)
+        .attr('cx', NODE_SIZE)
+        .attr('cy', NODE_SIZE)
+        .attr('fill', 'orange');
+      tn_nodes.append('text')
+        .text(function() {
+          return "T";
+        })
+        .attr('x', NODE_SIZE)
+        .attr('y', NODE_SIZE)
+        .attr('dy', NODE_SIZE - 2)
+        .attr('fill', 'white')
+        .attr('text-anchor', 'middle');
+
+      return d3.csv("api/disposal_data");
+    }).then(disposal_stations => {
+      disposal_stations.forEach(disposal_station => {
+        disposal_station.LatLng = new L.LatLng(parseFloat(disposal_station.Latitude), parseFloat(disposal_station.Longitude));
+        disposal_station.type = NODE_TYPE.disposal_station;
+        disposal_station.name = disposal_station["Disposal Facility"];
+      });
+
+      df_nodes = g.select('.dn-group').selectAll('.node')
+        .data(disposal_stations)
+        .enter().append('g').attr('class', 'node disposal-node')
+        .attr('id', function(d) {
+          return d.name.toLowerCase().replace(/ /g, '-');
+        })
+        .on('mouseover', handlenodemouseover)
+        .on('mouseout', handlenodemouseout)
+        .on('click', handlenodeclick);
+      df_nodes.append('text')
+        .text(function(d) {
+          return d.name;
+        })
+        .attr('class', 'name')
+        .attr('x', NODE_SIZE)
+        .attr('y', 0)
+        .attr('text-anchor', 'middle')
+        .attr('display', 'none');
+      df_nodes.append('circle')
+        .attr('r', NODE_SIZE)
+        .attr('cx', NODE_SIZE)
+        .attr('cy', NODE_SIZE)
+        .attr('fill', 'green');
+      df_nodes.append('text')
+        .text(function() {
+          return "L";
+        })
+        .attr('x', NODE_SIZE)
+        .attr('y', NODE_SIZE)
+        .attr('dy', NODE_SIZE - 2)
+        .attr('fill', 'white')
+        .attr('text-anchor', 'middle');
+
+      return d3.csv("api/transaction_data");
+    }).then(transactions => {
+      transactions.forEach(tr => {
+        if (tr['INNOUTUT'] == "IN") {
+          in_transactions.push(tr);
+        } else if (tr["INNOUTUT"] == "OUT") {
+          out_transactions.push(tr);
+        }
+      });
+      update();
+    });
 
 
-        map.on('viewreset ', update);
-        map.on('zoom ', update);
-    })();
-    </script>
+    map.on('viewreset ', update);
+    map.on('zoom ', update);
+  })();
+  </script>
 </body>
 
 </html>
