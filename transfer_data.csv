@@ -1,7 +1,7 @@
-Facility Name,Facility address,Longitude,Latitude
-Foster Transfer Station,"South Gippsland Highway, Foster, 3960, Victoria,  Australia",146.210413,-38.649272
-Koonwarra Transfer Station,"Koonwarra, 3954, Victoria, Australia",145.927735,-38.556792
-Korumburra Transfer Station,"Silkstone Road, Korumburra, 3950, Victoria, Australia",145.835205,-38.446692
-Mirboo North Transfer Station,"Railway Road, Mirboo North, 3871, Victoria, Australia",146.172041,-38.401094
-Venus Bay Transfer Station,"Cnr Canterbury Road and No 3 Beach Road, Venus Bay, 3956, Victoria, Australia",145.8099722,-38.6963
-Walkerville Transfer Station,"Fish Creek - Walkerville Road, Walkerville, 3956, Victoria, Australia",145.997576,-38.826722
+Facility Name,Facility address,Longitude,Latitude,Capacity vol,Capacity wt
+Foster Transfer Station,"South Gippsland Highway, Foster, 3960, Victoria,  Australia",146.210413,-38.649272,50,20
+Koonwarra Transfer Station,"Koonwarra, 3954, Victoria, Australia",145.927735,-38.556792,50,20
+Korumburra Transfer Station,"Silkstone Road, Korumburra, 3950, Victoria, Australia",145.835205,-38.446692,50,20
+Mirboo North Transfer Station,"Railway Road, Mirboo North, 3871, Victoria, Australia",146.172041,-38.401094,50,20
+Venus Bay Transfer Station,"Cnr Canterbury Road and No 3 Beach Road, Venus Bay, 3956, Victoria, Australia",145.8099722,-38.6963,50,20
+Walkerville Transfer Station,"Fish Creek - Walkerville Road, Walkerville, 3956, Victoria, Australia",145.997576,-38.826722,50,20

@@ -5,20 +5,22 @@
 <head>
   <title>Waste flow in Victoria</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.4.0/dist/leaflet.css" integrity="sha512-puBpdR0798OZvTTbP4A8Ix/l+A4dHDD0DGqYW6RQ+9jxkRFclaxxQb/SJAWZfWAkuyeQUytO7+7N4QKrDh+drA==" crossorigin="" />
-  <link href="https://unpkg.com/material-components-web@latest/dist/material-components-web.min.css" rel="stylesheet">
   <script src="https://d3js.org/d3-selection.v1.min.js"></script>
   <script src="https://d3js.org/d3-dsv.v1.min.js"></script>
   <script src="https://d3js.org/d3-fetch.v1.min.js"></script>
-  <script src="https://unpkg.com/material-components-web@latest/dist/material-components-web.min.js"></script>
   <script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js" integrity="sha512-QVftwZFqvtRNi0ZyCtsznlKSWOStnDORoefr1enyq5mVL4tmKB3S/EnC3rRJcxCPavG10IcrVGSmPh6Qw5lwrg==" crossorigin=""></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/semantic-ui@2.4.2/dist/semantic.min.css">
+  <script src="https://code.jquery.com/jquery-3.1.1.min.js" integrity="sha256-hVVnYaiADRTO2PzUGmuLJr8BLUSjGIZsDYGmIJLv2b8=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/semantic-ui@2.4.2/dist/semantic.min.js"></script>
 </head>
 
 <body>
   <style>
     #map {
-            min-height: 750px;
-        }
-        .node {
+        flex: 1;
+        min-height: 750px;
+    }
+    .node {
             cursor: default;
             transform-origin: 6px 6px;
             -webkit-transition: all 0.2s;
@@ -26,25 +28,70 @@
             -o-transition: all 0.2s;
             transition: all 0.2s;
         }
-        .leaflet-pane > svg path {
+    .leaflet-pane > svg path {
             pointer-events: auto;
         }
-        svg .path-group path {
+    svg .path-group path {
             opacity: 0.4;
             cursor: default;
         }
-        /* disable text selection */
-        svg *::selection {
+    circle.dial {
+        transform: rotate(-90deg);
+        transform-origin: center;
+    }
+    /* disable text selection */
+    svg *::selection {
             background : transparent;
         }
-        svg *::-moz-selection {
+    svg *::-moz-selection {
             background:transparent;
         }
-        svg *::-webkit-selection {
+    svg *::-webkit-selection {
             background:transparent;
         }
     </style>
-  <div id="map"></div>
+  <div class="ui right sidebar">
+    <div class="ui segment">
+      <div class="ui vertically divided grid">
+        <!-- Name and logo -->
+        <div class="row">
+          <div class="four wide column">
+            <svg viewbox="0 0 12 12">
+              <circle r="6" cx="6" cy="6"></circle>
+              <text x="6" y="6" dy="4" text-anchor="middle" fill="white" font-size="12"></text>
+            </svg>
+          </div>
+          <div class="twelve wide column">
+            <div class="ui small header"></div>
+          </div>
+        </div>
+        <!-- Volumne and Weight capacity -->
+        <div class="row">
+          <div class="eight wide column" style="text-align:center">
+            <svg viewBox="0 0 60 60">
+              <circle r="25" cx="30" cy="30" fill="none" stroke="steelblue" stroke-width="5" opacity="0.5"></circle>
+              <circle class="dial" r="25" cx="30" cy="30" fill="none"
+              stroke-width="5"></circle>
+              <text x="30" y="30" dy="5" text-anchor="middle"></text>
+            </svg>
+            Volumne Capacity Used
+          </div>
+          <div class="eight wide column" style="text-align:center">
+            <svg viewBox="0 0 60 60">
+              <circle r="25" cx="30" cy="30" fill="none" stroke="steelblue" stroke-width="5" opacity="0.5"></circle>
+              <circle class="dial" r="25" cx="30" cy="30" fill="none"
+              stroke-width="5"></circle>
+              <text x="30" y="30" dy="5" text-anchor="middle"></text>
+            </svg>
+            Weight Capacity Used
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="pusher">
+    <div id="map"></div>
+  </div>
   <script type="text/javascript">
   (function() {
     // Setting Leaflet map
@@ -58,7 +105,7 @@
     L.svg().addTo(map);
 
     var out_transactions = [];
-    var in_transactions = [];
+    var all_transactions = [];
     var in_focus = null;
     const NODE_TYPE = {
       transfer_station: "transfer_station",
@@ -79,7 +126,7 @@
     tooltip = g.append('g').attr('class', 'tooltip')
       .attr('opacity', 0);
 
-    document.getElementById("map").addEventListener("click", function(e) {
+    $("#map").on("click", function(e) {
       if (e.target == this && in_focus) {
         shrinknode.call(in_focus);
         in_focus = null;
@@ -102,6 +149,14 @@
       if (!in_focus) {
         in_focus = this;
         expandnode.call(this, d);
+        // Showing sidebar
+        fillsidebar(d);
+        $('.ui.sidebar')
+          .sidebar({
+            'transition': 'overlay',
+            'dimPage': false
+          })
+          .sidebar('toggle');
       } else if (in_focus == this) {
         in_focus = null;
         shrinknode.call(this);
@@ -130,39 +185,53 @@
       paths.exit().remove();
       paths.enter().append('path')
         .attr('d', function(tr) {
-          return `M ${map.latLngToLayerPoint(tr['0'].LatLng).x}, ${map.latLngToLayerPoint(tr['0'].LatLng).y} L ${map.latLngToLayerPoint(tr['1'].LatLng).x}, ${map.latLngToLayerPoint(tr['1'].LatLng).y}`;
+          p1 = null;
+          p2 = null;
+          d = null;
+          if (tr['0'].LatLng.lng < tr['1'].LatLng.lng) {
+            p1 = map.latLngToLayerPoint(tr['0'].LatLng);
+            p2 = map.latLngToLayerPoint(tr['1'].LatLng);
+          } else {
+            p1 = map.latLngToLayerPoint(tr['1'].LatLng);
+            p2 = map.latLngToLayerPoint(tr['0'].LatLng);
+          }
+          d = Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
+          c1 = [Math.round(0.75 * p1.x + 0.25 * p2.x), Math.round(0.75 * p1.y + 0.25 * p2.y + d / 20)];
+          c2 = [Math.round(0.25 * p1.x + 0.75 * p2.x), Math.round(0.25 * p1.y + 0.75 * p2.y - d / 20)];
+          return `M ${p1.x} ${p1.y} C ${c1[0]} ${c1[1]}, ${c2[0]} ${c2[1]}, ${p2.x} ${p2.y}`;
         })
         .attr('class', (tr) => {
           return `${getClassName(tr['0'].name)} ${getClassName(tr['1'].name)}`;
         })
+        .attr('fill', 'none')
         .attr('stroke', 'rgb(52,152,219)')
         .attr('stroke-width', function(tr) {
           return tr.data['tot tonnes'] * 10 / 67.5 + 2;
         })
         .attr('pointer-events', 'all')
         .on('mouseover', function(tr) {
-            mouse_location = map.mouseEventToLayerPoint(d3.event);
-            tooltip.attr('transform', function(){
-                return `translate(${mouse_location.x}, ${mouse_location.y-30})`;
-            }).
-            attr('opacity', 1);
-            tooltip.append('text').text(function() {
-                return `${tr.data['Facility NAME']} to ${tr.data['Disposal Facility']}`;
+          mouse_location = map.mouseEventToLayerPoint(d3.event);
+          tooltip.attr('transform', function() {
+            return `translate(${mouse_location.x}, ${mouse_location.y-30})`;
+          });
+          tooltip.append('text').text(function() {
+              return `${tr.data['Facility NAME']} to ${tr.data['Disposal Facility']}`;
             })
             .attr('text-anchor', 'middle');
-            tooltip.append('text').text(function() {
-                return `Volume: ${tr.data['Volume m3']}`;
+          tooltip.append('text').text(function() {
+              return `Volume: ${tr.data['Volume m3']}`;
             })
             .attr('dy', 10)
             .attr('text-anchor', 'middle');
-            tooltip.append('text').text(function() {
-                return `Weight: ${tr.data['tot tonnes']} t`;
+          tooltip.append('text').text(function() {
+              return `Weight: ${tr.data['tot tonnes']} t`;
             })
             .attr('dy', 20)
             .attr('text-anchor', 'middle');
+          tooltip.attr('opacity', 1);
         })
         .on('mouseout', function() {
-            tooltip
+          tooltip
             .attr('opacity', 0)
             .html("");
         });
@@ -171,6 +240,37 @@
     removePaths = function() {
       name = getClassName(d3.select(this).data()[0].name);
       g.select('.path-group').selectAll('path.' + name).remove();
+    }
+
+    fillsidebar = function(d) {
+      svg_logo = {
+        [NODE_TYPE.transfer_station]: {
+          fill: 'orange',
+          text: 'T'
+        },
+        [NODE_TYPE.disposal_station]: {
+          fill: 'green',
+          text: 'L'
+        }
+      }
+      $('.ui.sidebar .row:first-child .ui.header').text(d.name);
+      first_row = $('.ui.sidebar .row:first-child svg');
+      first_row.find('circle').attr('fill', svg_logo[d.type].fill);
+      first_row.find('text').text(svg_logo[d.type].text);
+
+      vol_capacity = 80
+      volume_capacity_gauge = $('.ui.sidebar .row:nth-child(2) .column:first-child svg');
+      volume_capacity_gauge.find('text').text(`${vol_capacity}%`);
+      volume_capacity_gauge.find('circle.dial')
+      .attr('stroke', svg_logo[d.type].fill)
+      .attr('stroke-dasharray', `${Math.round(Math.PI*25*vol_capacity/50)} ${Math.round(2*Math.PI*25)}`);
+
+      weight_capacity = 65;
+      weight_capacity_gauge = $('.ui.sidebar .row:nth-child(2) .column:last-child svg');
+      weight_capacity_gauge.find('text').text(`${weight_capacity}%`);
+      weight_capacity_gauge.find('circle.dial')
+      .attr('stroke', svg_logo[d.type].fill)
+      .attr('stroke-dasharray', `${Math.round(Math.PI*25*weight_capacity/50)} ${Math.round(2*Math.PI*25)}`);
     }
 
     expandnode = function(d) {
@@ -306,11 +406,10 @@
       return d3.csv("api/transaction_data");
     }).then(transactions => {
       transactions.forEach(tr => {
-        if (tr['INNOUTUT'] == "IN") {
-          in_transactions.push(tr);
-        } else if (tr["INNOUTUT"] == "OUT") {
+        if (tr["INNOUTUT"] == "OUT") {
           out_transactions.push(tr);
         }
+        all_transactions.push(tr);
       });
       update();
     });
@@ -318,7 +417,7 @@
 
     map.on('viewreset ', update);
     map.on('zoom ', update);
-  })();
+  })(this);
   </script>
 </body>
 
