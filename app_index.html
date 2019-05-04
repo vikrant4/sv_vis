@@ -55,14 +55,18 @@
       <div class="ui vertically divided grid">
         <!-- Name and logo -->
         <div class="row">
-          <div class="four wide column">
-            <svg viewbox="0 0 12 12">
+          <div class="four wide centered column">
+            <svg viewbox="0 0 12 12" height="46">
               <circle r="6" cx="6" cy="6"></circle>
               <text x="6" y="6" dy="4" text-anchor="middle" fill="white" font-size="12"></text>
             </svg>
+            <small></small>
           </div>
           <div class="twelve wide column">
-            <div class="ui small header"></div>
+            <div class="content">
+              <div class="ui small header"></div>
+              <small></small>
+            </div>
           </div>
         </div>
         <!-- Volumne and Weight capacity -->
@@ -95,6 +99,7 @@
   <script type="text/javascript">
   (function() {
     // Setting Leaflet map
+    $('#map').height($('body').height());
     var map = L.map('map').setView([-38.30366863, 145.55121652], 9);
     L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}', {
       attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
@@ -108,21 +113,48 @@
     var all_transactions = [];
     var in_focus = null;
     const NODE_TYPE = {
-      transfer_station: "transfer_station",
-      disposal_station: "disposal_station"
+      'Landfill': {
+        node: {
+          background: '#00b159',
+          text: 'L'
+        }
+      },
+      'Reprocessor': {
+        node: {
+          background: '#ffc425',
+          text: 'R'
+        }
+      },
+      'RRC/TS': {
+        node: {
+          background: '#f37735',
+          text: 'T'
+        }
+      }
     };
     const NODE_SIZE = 6;
     const TRANSFORM_SPLIT = /\w*\(.[^\)]*\)/g;
 
     getClassName = (name) => {
-      return name.toLowerCase().replace(/ /g, '-');
+      return name.toLowerCase().replace(/\W/g, '-');
     }
 
     var svg = d3.select("#map").select("svg");
+    var defs = svg.append('defs');
     var g = svg.select("g").attr('pointer-events', 'all');
+    defs.append('marker')
+    .attr('id', 'arrow')
+    .attr('markerWidth', 13)
+    .attr('markerHeight', 13)
+    .attr('refX', 2)
+    .attr('refY', 6)
+    .attr('markerUnits', 'userSpanceOnUse')
+    .attr('orient', 'auto')
+    .append('path')
+    .attr('d', 'M2,2 L2,11 L10,6 L2,2')
+    .attr('fill', '#00000');
     g.append('g').attr('class', 'path-group');
-    g.append('g').attr('class', 'tn-group');
-    g.append('g').attr('class', 'dn-group');
+    g.append('g').attr('class', 'node-group');
     tooltip = g.append('g').attr('class', 'tooltip')
       .attr('opacity', 0);
 
@@ -185,20 +217,9 @@
       paths.exit().remove();
       paths.enter().append('path')
         .attr('d', function(tr) {
-          p1 = null;
-          p2 = null;
-          d = null;
-          if (tr['0'].LatLng.lng < tr['1'].LatLng.lng) {
-            p1 = map.latLngToLayerPoint(tr['0'].LatLng);
-            p2 = map.latLngToLayerPoint(tr['1'].LatLng);
-          } else {
-            p1 = map.latLngToLayerPoint(tr['1'].LatLng);
-            p2 = map.latLngToLayerPoint(tr['0'].LatLng);
-          }
-          d = Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
-          c1 = [Math.round(0.75 * p1.x + 0.25 * p2.x), Math.round(0.75 * p1.y + 0.25 * p2.y + d / 20)];
-          c2 = [Math.round(0.25 * p1.x + 0.75 * p2.x), Math.round(0.25 * p1.y + 0.75 * p2.y - d / 20)];
-          return `M ${p1.x} ${p1.y} C ${c1[0]} ${c1[1]}, ${c2[0]} ${c2[1]}, ${p2.x} ${p2.y}`;
+          p1 = map.latLngToLayerPoint(tr['0'].LatLng);
+          p2 = map.latLngToLayerPoint(tr['1'].LatLng);
+          return `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y}`;
         })
         .attr('class', (tr) => {
           return `${getClassName(tr['0'].name)} ${getClassName(tr['1'].name)}`;
@@ -206,7 +227,7 @@
         .attr('fill', 'none')
         .attr('stroke', 'rgb(52,152,219)')
         .attr('stroke-width', function(tr) {
-          return tr.data['tot tonnes'] * 10 / 67.5 + 2;
+          return tr.data['tot_tonnes'] * 10 / 67.5 + 2;
         })
         .attr('pointer-events', 'all')
         .on('mouseover', function(tr) {
@@ -215,16 +236,16 @@
             return `translate(${mouse_location.x}, ${mouse_location.y-30})`;
           });
           tooltip.append('text').text(function() {
-              return `${tr.data['Facility NAME']} to ${tr.data['Disposal Facility']}`;
+              return `${tr.data['in_facility']} to ${tr.data['out_facility']}`;
             })
             .attr('text-anchor', 'middle');
           tooltip.append('text').text(function() {
-              return `Volume: ${tr.data['Volume m3']}`;
+              return `Category: ${tr.data['item_group']}`;
             })
             .attr('dy', 10)
             .attr('text-anchor', 'middle');
           tooltip.append('text').text(function() {
-              return `Weight: ${tr.data['tot tonnes']} t`;
+              return `Weight: ${tr.data['tot_tonnes']} t`;
             })
             .attr('dy', 20)
             .attr('text-anchor', 'middle');
@@ -243,33 +264,25 @@
     }
 
     fillsidebar = function(d) {
-      svg_logo = {
-        [NODE_TYPE.transfer_station]: {
-          fill: 'orange',
-          text: 'T'
-        },
-        [NODE_TYPE.disposal_station]: {
-          fill: 'green',
-          text: 'L'
-        }
-      }
-      $('.ui.sidebar .row:first-child .ui.header').text(d.name);
+      $('.ui.sidebar .row:first-child .four small').text(d.type);
+      $('.ui.sidebar .row:first-child .content .ui.header').text(d.name);
+      $('.ui.sidebar .row:first-child .content small').text(d.region);
       first_row = $('.ui.sidebar .row:first-child svg');
-      first_row.find('circle').attr('fill', svg_logo[d.type].fill);
-      first_row.find('text').text(svg_logo[d.type].text);
+      first_row.find('circle').attr('fill', NODE_TYPE[d.type].node.background);
+      first_row.find('text').text(NODE_TYPE[d.type].node.text);
 
       vol_capacity = 80
       volume_capacity_gauge = $('.ui.sidebar .row:nth-child(2) .column:first-child svg');
       volume_capacity_gauge.find('text').text(`${vol_capacity}%`);
       volume_capacity_gauge.find('circle.dial')
-      .attr('stroke', svg_logo[d.type].fill)
+      .attr('stroke', NODE_TYPE[d.type].node.background)
       .attr('stroke-dasharray', `${Math.round(Math.PI*25*vol_capacity/50)} ${Math.round(2*Math.PI*25)}`);
 
       weight_capacity = 65;
       weight_capacity_gauge = $('.ui.sidebar .row:nth-child(2) .column:last-child svg');
       weight_capacity_gauge.find('text').text(`${weight_capacity}%`);
       weight_capacity_gauge.find('circle.dial')
-      .attr('stroke', svg_logo[d.type].fill)
+      .attr('stroke', NODE_TYPE[d.type].node.background)
       .attr('stroke-dasharray', `${Math.round(Math.PI*25*weight_capacity/50)} ${Math.round(2*Math.PI*25)}`);
     }
 
@@ -291,15 +304,12 @@
       // Showing name
       d3.select(this).select('.name').attr('display', 'initial');
 
-      // Making and showing paths
-      p1 = d.type == NODE_TYPE.transfer_station ? 'Facility NAME' : 'Disposal Facility';
-      p2 = d.type == NODE_TYPE.transfer_station ? 'Disposal Facility' : 'Facility NAME';
       links = [];
       out_transactions.forEach(tr => {
-        if (tr[p1] == d.name) {
+        if (tr['in_facility'] == d.name || tr['out_facility'] == d.name) {
           links.push({
-            '0': d,
-            '1': g.select('#' + getClassName(tr[p2])).data()[0],
+            '0': g.select('#' + getClassName(tr['in_facility'])).data()[0],
+            '1': g.select('#' + getClassName(tr['out_facility'])).data()[0],
             'data': tr
           });
         }
@@ -322,18 +332,16 @@
     }
 
     // Fetching data
-    d3.csv("api/transfer_data").then(transfer_stations => {
-      transfer_stations.forEach(transfer_station => {
-        transfer_station.LatLng = new L.LatLng(parseFloat(transfer_station.Latitude), parseFloat(transfer_station.Longitude))
-        transfer_station.type = NODE_TYPE.transfer_station;
-        transfer_station.name = transfer_station["Facility Name"];
+    d3.json("api/facility").then(facilities => {
+      facilities.forEach(facility => {
+        facility.LatLng = new L.LatLng(parseFloat(facility.latitude), parseFloat(facility.longitude))
       });
 
-      tn_nodes = g.select('.tn-group').selectAll('.node')
-        .data(transfer_stations)
-        .enter().append('g').attr('class', 'node transfer-node')
+      tn_nodes = g.select('.node-group').selectAll('.node')
+        .data(facilities)
+        .enter().append('g').attr('class', 'node')
         .attr('id', function(d) {
-          return d.name.toLowerCase().replace(/ /g, '-');
+          return getClassName(d.name);
         })
         .on('mouseover', handlenodemouseover)
         .on('mouseout', handlenodemouseout)
@@ -351,51 +359,12 @@
         .attr('r', NODE_SIZE)
         .attr('cx', NODE_SIZE)
         .attr('cy', NODE_SIZE)
-        .attr('fill', 'orange');
+        .attr('fill', function(d) {
+          return NODE_TYPE[d.type].node.background;
+        });
       tn_nodes.append('text')
-        .text(function() {
-          return "T";
-        })
-        .attr('x', NODE_SIZE)
-        .attr('y', NODE_SIZE)
-        .attr('dy', NODE_SIZE - 2)
-        .attr('fill', 'white')
-        .attr('text-anchor', 'middle');
-
-      return d3.csv("api/disposal_data");
-    }).then(disposal_stations => {
-      disposal_stations.forEach(disposal_station => {
-        disposal_station.LatLng = new L.LatLng(parseFloat(disposal_station.Latitude), parseFloat(disposal_station.Longitude));
-        disposal_station.type = NODE_TYPE.disposal_station;
-        disposal_station.name = disposal_station["Disposal Facility"];
-      });
-
-      df_nodes = g.select('.dn-group').selectAll('.node')
-        .data(disposal_stations)
-        .enter().append('g').attr('class', 'node disposal-node')
-        .attr('id', function(d) {
-          return d.name.toLowerCase().replace(/ /g, '-');
-        })
-        .on('mouseover', handlenodemouseover)
-        .on('mouseout', handlenodemouseout)
-        .on('click', handlenodeclick);
-      df_nodes.append('text')
         .text(function(d) {
-          return d.name;
-        })
-        .attr('class', 'name')
-        .attr('x', NODE_SIZE)
-        .attr('y', 0)
-        .attr('text-anchor', 'middle')
-        .attr('display', 'none');
-      df_nodes.append('circle')
-        .attr('r', NODE_SIZE)
-        .attr('cx', NODE_SIZE)
-        .attr('cy', NODE_SIZE)
-        .attr('fill', 'green');
-      df_nodes.append('text')
-        .text(function() {
-          return "L";
+          return NODE_TYPE[d.type].node.text
         })
         .attr('x', NODE_SIZE)
         .attr('y', NODE_SIZE)
@@ -403,10 +372,10 @@
         .attr('fill', 'white')
         .attr('text-anchor', 'middle');
 
-      return d3.csv("api/transaction_data");
-    }).then(transactions => {
-      transactions.forEach(tr => {
-        if (tr["INNOUTUT"] == "OUT") {
+      return d3.json("api/transfer");
+    }).then(transfers => {
+      transfers.forEach(tr => {
+        if (tr["inout"] == "OUT") {
           out_transactions.push(tr);
         }
         all_transactions.push(tr);
