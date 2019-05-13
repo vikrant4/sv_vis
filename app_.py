@@ -4,10 +4,9 @@
 # In[84]:
 
 
-from flask import Flask, send_from_directory, g, jsonify
+from flask import Flask, send_from_directory, g, jsonify, request, render_template
 import os
 import sqlite3
-
 
 # In[85]:
 
@@ -52,6 +51,9 @@ def index():
         os.path.dirname(__file__),
         "app_index.html"
     )
+def request():
+    if request.method = 'GET':
+            return render_template('app_index.html')
 
 
 # In[90]:
@@ -62,6 +64,14 @@ def facility_data():
     try:
         db = get_db()
         result = db.execute('SELECT * FROM facility WHERE facility.name IN(SELECT in_facility FROM transfer UNION SELECT out_facility FROM transfer) ORDER BY latitude DESC').fetchall()
+        if not request.values.get("Landfill"):
+            raise RuntimeError("Select Facility Type")
+        if not request.values.get("Reprocessor"):
+            raise RuntimeError("Select Facility Type")
+        if not request.values.get("RRC/TS"):
+            raise RuntimeError("Select Facility Type")
+        type = request.values('ftype')
+        db.execute("SELECT * FROM facility WHERE ftype={type}".\format(type=type))
         return jsonify([dict(r) for r in result])
     except sqlite3.ProgrammingError as e:
         print('SQL ERROR:', e)
