@@ -74,8 +74,7 @@
           <div class="eight wide column" style="text-align:center">
             <svg viewBox="0 0 60 60">
               <circle r="25" cx="30" cy="30" fill="none" stroke="steelblue" stroke-width="5" opacity="0.5"></circle>
-              <circle class="dial" r="25" cx="30" cy="30" fill="none"
-              stroke-width="5"></circle>
+              <circle class="dial" r="25" cx="30" cy="30" fill="none" stroke-width="5"></circle>
               <text x="30" y="30" dy="5" text-anchor="middle"></text>
             </svg>
             Volumne Capacity Used
@@ -83,8 +82,7 @@
           <div class="eight wide column" style="text-align:center">
             <svg viewBox="0 0 60 60">
               <circle r="25" cx="30" cy="30" fill="none" stroke="steelblue" stroke-width="5" opacity="0.5"></circle>
-              <circle class="dial" r="25" cx="30" cy="30" fill="none"
-              stroke-width="5"></circle>
+              <circle class="dial" r="25" cx="30" cy="30" fill="none" stroke-width="5"></circle>
               <text x="30" y="30" dy="5" text-anchor="middle"></text>
             </svg>
             Weight Capacity Used
@@ -93,13 +91,66 @@
       </div>
     </div>
   </div>
-  <div class="pusher">
+  <div class="pusher" style="display:flex;flex-direction:row">
+    <div class="ui segment" style="flex:0 0 20%;height:100%">
+      <form class="ui form segment" name="facility">
+        <h4 class="ui dividing header">Facility filter</h4>
+        <div class="two fields">
+          <div class="field">
+            <label>Region</label>
+            <select class="ui fluid dropdown" name="region" onchange="refreshData()">
+              <option value="all" selected>All</option>
+              <option value="Metropolitan WRRG">Metropolitan</option>
+              <option value="Grampians Central West WRRG">Grampians</option>
+              <option value="Barwon South West WRRG">Barwon</option>
+              <option value="Loddon Mallee WRRG">Loddon</option>
+              <option value="Gippsland WRRG">Gippsland</option>
+              <option value="Goulburn Valley WRRG">Goulburn</option>
+              <option value="North East WRRG">North East</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Type</label>
+            <select class="ui fluid dropdown" name="type" onchange="refreshData()">
+              <option value="all" selected>All</option>
+              <option value="Landfill">Landfill</option>
+              <option value="Reprocessor">Reprocessor</option>
+              <option value="RRC/TS">RRC/TS</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <div class="ui toggle checkbox">
+            <input type="checkbox" name="transfer_present" onchange="refreshData()">
+            <label>Show only facilities which have transfer data</label>
+          </div>
+        </div>
+      </form>
+      <form class="ui form segment" name="transfer">
+        <h4 class="ui dividing header">Transfer Filter</h4>
+        <div class="field">
+          <label>Waste Type</label>
+          <select class="ui fluid dropdown" name="item_name" onchange="refreshData()">
+            <option value="all" selected>All</option>
+            <option value="64) Comingled Recyclables Out" selected>Combined Recyclables</option>
+            <option value="65) Automotive Batteries Out" selected>Automotive Batteries</option>
+            <option value="66) Drummuster Drums Out" selected>Drummuster Drums</option>
+            <option value="68) Landfill" selected>Landfill</option>
+            <option value="69) Mat flock" selected>Mat flock</option>
+            <option value="70) Non Ferrous Scrap Out" selected>Non ferrous scrap</option>
+            <option value="72) Paper/Cardboard Out" selected>Paper/Cardboard</option>
+            <option value="75) Silage Wrap Out" selected>Silage</option>
+          </select>
+        </div>
+      </form>
+    </div>
     <div id="map"></div>
   </div>
   <script type="text/javascript">
   (function() {
     // Setting Leaflet map
     $('#map').height($('body').height());
+    $('select.dropdown').dropdown();
     var map = L.map('map').setView([-38.30366863, 145.55121652], 9);
     L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}', {
       attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
@@ -143,16 +194,16 @@
     var defs = svg.append('defs');
     var g = svg.select("g").attr('pointer-events', 'all');
     defs.append('marker')
-    .attr('id', 'arrow')
-    .attr('markerWidth', 13)
-    .attr('markerHeight', 13)
-    .attr('refX', 2)
-    .attr('refY', 6)
-    .attr('markerUnits', 'userSpanceOnUse')
-    .attr('orient', 'auto')
-    .append('path')
-    .attr('d', 'M2,2 L2,11 L10,6 L2,2')
-    .attr('fill', '#00000');
+      .attr('id', 'arrow')
+      .attr('markerWidth', 13)
+      .attr('markerHeight', 13)
+      .attr('refX', 2)
+      .attr('refY', 6)
+      .attr('markerUnits', 'userSpanceOnUse')
+      .attr('orient', 'auto')
+      .append('path')
+      .attr('d', 'M2,2 L2,11 L10,6 L2,2')
+      .attr('fill', '#00000');
     g.append('g').attr('class', 'path-group');
     g.append('g').attr('class', 'node-group');
     tooltip = g.append('g').attr('class', 'tooltip')
@@ -275,15 +326,15 @@
       volume_capacity_gauge = $('.ui.sidebar .row:nth-child(2) .column:first-child svg');
       volume_capacity_gauge.find('text').text(`${vol_capacity}%`);
       volume_capacity_gauge.find('circle.dial')
-      .attr('stroke', NODE_TYPE[d.type].node.background)
-      .attr('stroke-dasharray', `${Math.round(Math.PI*25*vol_capacity/50)} ${Math.round(2*Math.PI*25)}`);
+        .attr('stroke', NODE_TYPE[d.type].node.background)
+        .attr('stroke-dasharray', `${Math.round(Math.PI*25*vol_capacity/50)} ${Math.round(2*Math.PI*25)}`);
 
       weight_capacity = 65;
       weight_capacity_gauge = $('.ui.sidebar .row:nth-child(2) .column:last-child svg');
       weight_capacity_gauge.find('text').text(`${weight_capacity}%`);
       weight_capacity_gauge.find('circle.dial')
-      .attr('stroke', NODE_TYPE[d.type].node.background)
-      .attr('stroke-dasharray', `${Math.round(Math.PI*25*weight_capacity/50)} ${Math.round(2*Math.PI*25)}`);
+        .attr('stroke', NODE_TYPE[d.type].node.background)
+        .attr('stroke-dasharray', `${Math.round(Math.PI*25*weight_capacity/50)} ${Math.round(2*Math.PI*25)}`);
     }
 
     expandnode = function(d) {
@@ -331,59 +382,66 @@
       removePaths.call(this);
     }
 
-    // Fetching data
-    d3.json("api/facility").then(facilities => {
-      facilities.forEach(facility => {
-        facility.LatLng = new L.LatLng(parseFloat(facility.latitude), parseFloat(facility.longitude))
-      });
-
-      tn_nodes = g.select('.node-group').selectAll('.node')
-        .data(facilities)
-        .enter().append('g').attr('class', 'node')
-        .attr('id', function(d) {
-          return getClassName(d.name);
-        })
-        .on('mouseover', handlenodemouseover)
-        .on('mouseout', handlenodemouseout)
-        .on('click', handlenodeclick);
-      tn_nodes.append('text')
-        .text(function(d) {
-          return d.name;
-        })
-        .attr('class', 'name')
-        .attr('x', NODE_SIZE)
-        .attr('y', 0)
-        .attr('text-anchor', 'middle')
-        .attr('display', 'none');
-      tn_nodes.append('circle')
-        .attr('r', NODE_SIZE)
-        .attr('cx', NODE_SIZE)
-        .attr('cy', NODE_SIZE)
-        .attr('fill', function(d) {
-          return NODE_TYPE[d.type].node.background;
+    refreshData = function() {
+      g.select('.node-group').selectAll('.node').exit().remove();
+      g.select('.node-group').html('');
+      g.select('.path-group').html('');
+      // Fetching data
+      d3.text("api/facility?" + $('form[name="facility"]').serialize()).then(facility_data => {
+        facilities = JSON.parse(facility_data);
+        facilities.forEach(facility => {
+          facility.LatLng = new L.LatLng(parseFloat(facility.latitude), parseFloat(facility.longitude))
         });
-      tn_nodes.append('text')
-        .text(function(d) {
-          return NODE_TYPE[d.type].node.text
-        })
-        .attr('x', NODE_SIZE)
-        .attr('y', NODE_SIZE)
-        .attr('dy', NODE_SIZE - 2)
-        .attr('fill', 'white')
-        .attr('text-anchor', 'middle');
 
-      return d3.json("api/transfer");
-    }).then(transfers => {
-      transfers.forEach(tr => {
-        if (tr["inout"] == "OUT") {
-          out_transactions.push(tr);
-        }
-        all_transactions.push(tr);
+        tn_nodes = g.select('.node-group').selectAll('.node')
+          .data(facilities)
+          .enter().append('g').attr('class', 'node')
+          .attr('id', function(d) {
+            return getClassName(d.name);
+          })
+          .on('mouseover', handlenodemouseover)
+          .on('mouseout', handlenodemouseout)
+          .on('click', handlenodeclick);
+        tn_nodes.append('text')
+          .text(function(d) {
+            return d.name;
+          })
+          .attr('class', 'name')
+          .attr('x', NODE_SIZE)
+          .attr('y', 0)
+          .attr('text-anchor', 'middle')
+          .attr('display', 'none');
+        tn_nodes.append('circle')
+          .attr('r', NODE_SIZE)
+          .attr('cx', NODE_SIZE)
+          .attr('cy', NODE_SIZE)
+          .attr('fill', function(d) {
+            return NODE_TYPE[d.type].node.background;
+          });
+        tn_nodes.append('text')
+          .text(function(d) {
+            return NODE_TYPE[d.type].node.text
+          })
+          .attr('x', NODE_SIZE)
+          .attr('y', NODE_SIZE)
+          .attr('dy', NODE_SIZE - 2)
+          .attr('fill', 'white')
+          .attr('text-anchor', 'middle');
+
+        return d3.text("api/transfer?" + $('form[name="transfer"]').serialize());
+      }).then(transfer_data => {
+        transfers = JSON.parse(transfer_data);
+        transfers.forEach(tr => {
+          if (tr["inout"] == "OUT") {
+            out_transactions.push(tr);
+          }
+          all_transactions.push(tr);
+        });
+        update();
       });
-      update();
-    });
+    }
 
-
+    refreshData();
     map.on('viewreset ', update);
     map.on('zoom ', update);
   })(this);
