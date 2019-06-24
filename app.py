@@ -61,7 +61,7 @@ def index():
     )
 
 
-def query_filter_generator(arguments, col_list, first):
+def query_filter_generator(arguments, col_list):
     """Generate SQL filters for available columns from request arguments"""
     if arguments.get('transfer_present') == 'on':
         query_filter = """ WHERE facility.name IN
@@ -73,7 +73,7 @@ def query_filter_generator(arguments, col_list, first):
         if arguments.get(col):
             if arguments.get(col) == 'all':
                 continue
-            elif first and len(query_filter) == 0:
+            elif len(query_filter) == 0:
                 query_filter = " WHERE {} = '{}'".format(
                     col, arguments.get(col))
             else:
@@ -86,16 +86,12 @@ def query_filter_generator(arguments, col_list, first):
 def facility_data():
     """API to send facility data"""
     filter_query = query_filter_generator(
-        request.args, facility_col_list, True)
+        request.args, facility_col_list)
     print('Filter query', filter_query)
     try:
         db = get_db()
         result = db.execute(
-            """SELECT * FROM facility /*WHERE
-            facility.name IN(
-            SELECT in_facility FROM transfer
-            UNION
-            SELECT out_facility FROM transfer)*/""" + filter_query +
+            "SELECT * FROM facility " + filter_query +
             """ ORDER BY latitude DESC""").fetchall()
         print(jsonify([dict(r) for r in result]))
         return jsonify([dict(r) for r in result])
@@ -106,8 +102,8 @@ def facility_data():
 
 @app.route("/api/transfer", methods=['GET'])
 def transfer_data():
-    """API tp send transfer data"""
-    filter_query = query_filter_generator(request.args, transfer_col_list, True)
+    """API to send transfer data"""
+    filter_query = query_filter_generator(request.args, transfer_col_list)
     print('Filter query', filter_query)
     try:
         db = get_db()

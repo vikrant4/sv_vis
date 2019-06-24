@@ -132,14 +132,14 @@
           <label>Waste Type</label>
           <select class="ui fluid dropdown" name="item_name" onchange="refreshData()">
             <option value="all" selected>All</option>
-            <option value="64) Comingled Recyclables Out" selected>Combined Recyclables</option>
-            <option value="65) Automotive Batteries Out" selected>Automotive Batteries</option>
-            <option value="66) Drummuster Drums Out" selected>Drummuster Drums</option>
-            <option value="68) Landfill" selected>Landfill</option>
-            <option value="69) Mat flock" selected>Mat flock</option>
-            <option value="70) Non Ferrous Scrap Out" selected>Non ferrous scrap</option>
-            <option value="72) Paper/Cardboard Out" selected>Paper/Cardboard</option>
-            <option value="75) Silage Wrap Out" selected>Silage</option>
+            <option value="64) Comingled Recyclables Out">Combined Recyclables</option>
+            <option value="65) Automotive Batteries Out">Automotive Batteries</option>
+            <option value="66) Drummuster Drums Out">Drummuster Drums</option>
+            <option value="68) Landfill">Landfill</option>
+            <option value="69) Mat flock">Mat flock</option>
+            <option value="70) Non Ferrous Scrap Out">Non ferrous scrap</option>
+            <option value="72) Paper/Cardboard Out">Paper/Cardboard</option>
+            <option value="75) Silage Wrap Out">Silage</option>
           </select>
         </div>
       </form>
@@ -431,6 +431,7 @@
         return d3.text("api/transfer?" + $('form[name="transfer"]').serialize());
       }).then(transfer_data => {
         transfers = JSON.parse(transfer_data);
+        console.log(transfers);
         transfers.forEach(tr => {
           if (tr["inout"] == "OUT") {
             out_transactions.push(tr);
